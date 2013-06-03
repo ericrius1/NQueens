@@ -1,0 +1,196 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <title>WebGL Globe</title>
+    <LINK href="styles.css" rel="stylesheet" type="text/css">
+    <meta charset="utf-8">
+    <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+    
+  </head>
+  <body>
+
+  <div id="webglContainer"></div>
+
+
+  
+
+
+  <div id = "statsSideBar">
+    <img id = "queen" src = "images/queen.png"/>
+    <div id = "info">
+      <p>Welcome to SuperComputer, a distributed computing system built on <a href="http://nodejs.org/" target="_blank">
+        Node.js </a></p>
+      <p>Click the play button to your left to start contributing to 
+        breaking the world record for the <a href="http://www.math.utah.edu/~alfeld/queens/queens.html" target="_blank">
+        NQueens problem. </a></p>
+      <p>
+      <p id = "statsHeader">Statistics</p>
+
+      <div id = "stats">
+        <p>Total Solutions: <span id = "solutions"></span></p>
+        <p>Total Contributors: <span id = "contributors"></span></p>
+        <p>Total Jobs: <span id = "jobs"></span> </p>
+        <p>Your completed solutions: <span id = "userSolutions"></span></p>
+        <p>Your completed jobs: <span id = "userJobs"></span></p>
+      </div>
+  </div>
+
+
+  <div id="title">
+    Distributed Computing
+  </div>
+
+  </div>
+
+  <script src="third-party/system.min.js"></script>
+  <script src="third-party/three.min.js"></script>
+  <script src="third-party/tween.min.js"></script>
+  <script src="http://underscorejs.org/underscore-min.js"></script>
+  <script src="third-party/jquery.min.js"></script>
+  <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script type='text/javascript' src='https://cdn.firebase.com/v0/firebase.js'></script>
+  <script src="globe.js"></script>
+  <script src="sidebar.js"></script>
+  <script>
+  var sideBar = new DAT.SideBar();
+  var myRootRef = new Firebase('testqueens.firebaseIO.com/');
+
+    if (System.support.webgl === false) {
+
+      var message = document.createElement('div');
+      message.style.cssText = 'font-family:monospace;font-size:13px;text-align:center;color:#fff;background:#333;padding:1em;width:540px;margin:30em auto 0';
+      message.innerHTML = 'Either your graphics card or your browser does not support WebGL.<br /><a href="http://www.khronos.org/webgl/wiki_1_15/index.php/Getting_a_WebGL_Implementation">View a list</a> of WebGL compatible browsers.';
+      document.body.appendChild(message);
+      document.body.style.background = '#000000';
+
+    } else {
+
+      var webglContainer = document.getElementById('webglContainer');
+      var globe = new DAT.Globe(webglContainer);
+      var numSteps = 2;
+      var throbbingFrameCounter = 0;
+      var requestFrameCounter = 0;
+      var timeStep = 0;
+      var initialData;
+      var fps = 60;
+      var constantData;
+
+      var numSecondsBetweenRequests = 0.5;
+      var data;
+      var firstUpdate = true;
+
+      var updateFireBase = function () {
+        myRootRef.child(clientID).update({boards: localBoards, solutions: localsols,  operations: localOps,  jobs: localJobs});
+      };
+
+      var xhrRequest = function(path, isInitialRequest) {
+        var xhr = new XMLHttpRequest();
+        xhr.addEventListener('load', function(e) {
+          var data = JSON.parse(e.target.responseText);
+          if (isInitialRequest) {
+            constantData = data;
+            globe.initializeData(constantData[1], {
+              format: 'magnitude',
+              name: data[0],
+              animated: false,
+              belowGlobe: true
+            });
+            globe.createInitialPoints();
+          } else {
+            globe.updateData(constantData[1], {
+              format: 'magnitude',
+              name: constantData[0],
+              animated: true,
+              belowGlobe: true
+            });
+            globe.updateData(data[1], {
+              format: 'magnitude',
+              name: data[0],
+              animated: true,
+              belowGlobe: false
+            });
+
+            globe.createUpdatedPoints();
+
+          }
+        }, false);
+        xhr.open('GET', path, true);
+        xhr.send(null);
+
+      }
+
+      myRootRef.on('value', function(snapshot) {
+        $('#solutions').text(snapshot.val().solutions);
+        $('#contributors').text(snapshot.val().contributors);
+        $('#jobs').text(snapshot.val().jobs);
+        $('#userSolutions').text(snapshot.val().userSolutions);
+        $('#userJobs').text(snapshot.val().userSolutions);
+
+      });
+
+
+      xhrRequest('initialRequest.json', true);
+      globe.animate();
+
+      var animate = function() {
+        requestAnimationFrame(animate);
+        if (!firstUpdate) {
+          handleThrobbingAnimation();
+          TWEEN.update();
+        }
+        handleRequestTiming();
+
+      }
+
+      var handleThrobbingAnimation = function() {
+        if (throbbingFrameCounter === (20)) {
+          //tween to new height every second
+          new TWEEN.Tween(globe).to({
+            time: timeStep / numSteps
+          }, 500).easing(TWEEN.Easing.Cubic.Out).start();
+          timeStep++;
+          throbbingFrameCounter = 0;
+          if (timeStep > numSteps) {
+            timeStep = 0;
+          }
+        }
+        throbbingFrameCounter++;
+
+      }
+
+      // var authClient = new FirebaseAuthClient(myRootRef, function(error, user) {
+      //   if (!error) {
+      //     console.log(authClient);
+      //   }
+      // });
+
+      // var timAuth = function () {
+      //   authClient.login('facebook');
+      // };
+
+      var handleRequestTiming = function() {
+        if (requestFrameCounter === fps * numSecondsBetweenRequests) {
+          if (!firstUpdate) {
+            globe.deletePoints();
+          }
+          firstUpdate = false;
+
+          numSecondsBetweenRequests +=10;
+
+          requestFrameCounter = 0;
+
+          xhrRequest('updatedRequest.json', false)
+
+        }
+        requestFrameCounter++;
+      }
+
+      animate();
+
+     }
+
+  </script>
+  <script src="kingmaker.js"></script>
+  </body>
+
+</html>

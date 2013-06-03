@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+  body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    margin: auto;
+    padding-top: 40px;
+    position: relative;
+    width: 960px;
+  }
+</style>
+<script src="/socket.io/socket.io.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script>
+  var Supercomputer = io.connect('/'),
+      Pawns = new Worker('clientMap.js'),
+      n, localsols = 0;
+
+  Supercomputer.on('setN', function (dimension) {
+    console.log("Initializing Pawns for an n("+n+") Queens job");
+    n = dimension;
+    Pawns.postMessage({
+      'type': 'init',
+      'data': dimension
+    });
+  });
+
+  Supercomputer.on('map', function (branch) {
+    console.log("Sending new branch to local Pawns", branch);
+    Pawns.postMessage({
+      'type': 'map',
+      'data': branch
+    });
+  });
+
+  Supercomputer.on('open', function (branch) {
+    console.log("Pawns inflating Supercomputer branch", branch);
+    Pawns.postMessage({
+      'type': 'open',
+      'data': branch
+    });
+  });
+
+  Supercomputer.on('jobDone', function (solutions) {
+    console.log('Congratulations. We solved n( %d )!\n You found %d out of %d solutions', n, localsols, solutions);
+    Pawns.postMessage({
+      'type': 'terminate'
+    });
+  });
+
+  Pawns.onmessage = function(message) {
+    switch (message.data.type) {
+      case 'solutions':
+        console.log("Sending %d solutions to Supercomputer", message.data.data);
+        localsols += message.data.data;
+        Supercomputer.emit('result', message.data.data);
+        break;
+      case 'widened':
+        // console.log("Sending %d branches to Supercomputer", message.data.data.length);
+        // localsols += message.data.data;
+        Supercomputer.emit('deepbranches', message.data.data);
+        break;
+      case 'initialized':
+        console.log("Signalling Supercomputer for work");
+        Supercomputer.emit('initialized');
+        break;
+      case 'console':
+        console.log(message.data.data);
+        break;
+      default:
+        console.log(message.data);
+        throw new Error ("Invalid message from Pawns");
+    }
+  };
+
+  Pawns.onerror = function(e) {
+    console.log(e);
+  };
+
+</script>
+<body>You are working on N-Queens</body>
