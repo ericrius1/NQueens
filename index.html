@@ -93,23 +93,23 @@
               belowGlobe: true
             });
             globe.createInitialPoints();
-          // } else {
-          //   globe.updateData(constantData[1], {
-          //     format: 'magnitude',
-          //     name: constantData[0],
-          //     animated: true,
-          //     belowGlobe: true
-          //   });
-          //   globe.updateData(data[1], {
-          //     format: 'magnitude',
-          //     name: data[0],
-          //     animated: true,
-          //     belowGlobe: false
-          //   });
+          } else {
+            globe.updateData(constantData[1], {
+              format: 'magnitude',
+              name: constantData[0],
+              animated: true,
+              belowGlobe: true
+            });
+            globe.updateData(data[1], {
+              format: 'magnitude',
+              name: data[0],
+              animated: true,
+              belowGlobe: false
+            });
 
-          //   globe.createUpdatedPoints();
+            globe.createUpdatedPoints();
 
-          // }
+          }
         }, false);
         xhr.open('GET', path, true);
         xhr.send(null);
